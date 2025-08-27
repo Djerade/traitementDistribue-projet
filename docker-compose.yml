@@ -1,0 +1,131 @@
+version: "3.9"
+
+networks:
+  bigdata_net:
+    driver: bridge
+
+volumes:
+  hdfs_namenode:
+  hdfs_datanode_1:
+  hdfs_datanode_2:
+  hdfs_datanode_3:
+  metastore_db:
+  mongo_data:
+
+services:
+  namenode:
+    image: namenode:latest
+    container_name: namenode
+    hostname: namenode
+    environment:
+      - CLUSTER_NAME=exam-cluster
+    ports:
+      - "9870:9870"    # HDFS NN UI
+      - "8088:8088"    # YARN RM UI
+      - "7077:7077"    # Spark master RPC
+      - "8080:8080"    # Spark master UI
+    volumes:
+      - hdfs_namenode:/hadoop/dfs/name
+      - ./connectors:/opt/connectors
+      - ./hadoop:/opt/hadoop/conf
+    networks:
+      - bigdata_net
+
+  secondary-nn:
+    image: secondary-nn:latest
+    container_name: secondary-nn
+    hostname: secondary-nn
+    networks: [bigdata_net]
+
+  datanode-1:
+    image: datanode:latest
+    container_name: datanode-1
+    hostname: datanode-1
+    environment:
+      - SPARK_WORKER_CORES=2
+      - SPARK_WORKER_MEMORY=2g
+    ports:
+      - "9864:9864"
+      - "8081:8081"    # Spark worker UI
+    volumes:
+      - hdfs_datanode_1:/hadoop/dfs/data
+      - ./hadoop:/opt/hadoop/conf
+    networks: [bigdata_net]
+
+  datanode-2:
+    image: datanode:latest
+    container_name: datanode-2
+    hostname: datanode-2
+    ports:
+      - "8082:8081"
+    volumes:
+      - hdfs_datanode_2:/hadoop/dfs/data
+      - ./hadoop:/opt/hadoop/conf
+    networks: [bigdata_net]
+
+  datanode-3:
+    image: datanode:latest
+    container_name: datanode-3
+    hostname: datanode-3
+    ports:
+      - "8083:8081"
+    volumes:
+      - hdfs_datanode_3:/hadoop/dfs/data
+      - ./hadoop:/opt/hadoop/conf
+    networks: [bigdata_net]
+
+  spark-thrift:
+    image: spark-thrift:latest
+    container_name: spark-thrift
+    environment:
+      - HIVE_METASTORE_URI=thrift://metastore:9083
+    ports:
+      - "10000:10000"  # JDBC
+    depends_on: [namenode, metastore]
+    networks: [bigdata_net]
+
+  metastore:
+    image: metastore:latest
+    container_name: metastore
+    volumes:
+      - metastore_db:/var/lib/postgresql/data
+    networks: [bigdata_net]
+
+  pig:
+    image: pig:latest
+    container_name: pig
+    networks: [bigdata_net]
+    volumes:
+      - ./pig/scripts:/scripts
+
+  mongodb:
+    image: mongo:7
+    container_name: mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+      - ./mongo/init.js:/docker-entrypoint-initdb.d/init.js:ro
+    networks: [bigdata_net]
+
+  mongo-express:
+    image: mongo-express:1
+    container_name: mongo-express
+    environment:
+      - ME_CONFIG_MONGODB_SERVER=mongodb
+    ports:
+      - "8089:8081"
+    depends_on: [mongodb]
+    networks: [bigdata_net]
+
+  app:
+    build: ./app
+    container_name: app
+    env_file:
+      - .env
+    environment:
+      - JDBC_URL=jdbc:hive2://spark-thrift:10000/default
+    ports:
+      - "8501:8501"
+    depends_on: [spark-thrift]
+    networks: [bigdata_net]

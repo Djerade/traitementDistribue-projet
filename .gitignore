@@ -1,0 +1,44 @@
+# Fichiers temporaires
+*.tmp
+*.temp
+*.log
+*.pid
+
+# Fichiers de configuration locaux
+.env
+*.env.local
+
+# Volumes Docker
+hdfs_namenode/
+hdfs_datanode_*/
+metastore_db/
+mongo_data/
+
+# Fichiers de cache
+.cache/
+__pycache__/
+*.pyc
+*.pyo
+
+# Fichiers de données temporaires
+data/
+temp/
+tmp/
+
+# Logs
+logs/
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Connecteurs (optionnel - peuvent être téléchargés automatiquement)
+# connectors/*.jar
+
