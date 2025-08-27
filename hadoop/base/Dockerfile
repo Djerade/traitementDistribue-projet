@@ -4,8 +4,9 @@ FROM openjdk:11-jre-slim
 ARG HADOOP_VER=3.3.6
 ARG SPARK_VER=3.5.1
 
-# Installation des dépendances
-RUN apt-get update && apt-get install -y \
+# Installation des dépendances avec retry
+RUN apt-get update --option Acquire::Retries=5 --option Acquire::http::Timeout=60 && \
+    apt-get install -y --option Acquire::Retries=5 --option Acquire::http::Timeout=60 \
     curl \
     python3 \
     procps \

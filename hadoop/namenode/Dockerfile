@@ -1,7 +1,13 @@
 FROM hadoop-base:latest
 
+# Copie des configurations Hadoop
+COPY core-site.xml /opt/hadoop/etc/hadoop/
+COPY hdfs-site.xml /opt/hadoop/etc/hadoop/
+COPY yarn-site.xml /opt/hadoop/etc/hadoop/
+COPY mapred-site.xml /opt/hadoop/etc/hadoop/
+
 # Copie du script de démarrage
-COPY start-nn.sh /usr/local/bin/
+COPY namenode/start-nn.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/start-nn.sh
 
 # Exposition des ports

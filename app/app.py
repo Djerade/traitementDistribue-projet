@@ -4,7 +4,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import pymongo
-from pyhive import hive
+# from pyhive import hive  # Temporairement désactivé
 import os
 from datetime import datetime, timedelta
 
@@ -34,29 +34,9 @@ def get_mongo_connection():
 
 @st.cache_resource
 def get_hive_connection():
-    """Connexion à Hive via Spark Thrift"""
-    try:
-        # Utiliser les variables d'environnement si disponibles
-        jdbc_url = os.getenv('JDBC_URL', 'jdbc:hive2://spark-thrift:10000/default')
-        # Extraire host et port de l'URL JDBC
-        if jdbc_url.startswith('jdbc:hive2://'):
-            host_port = jdbc_url.replace('jdbc:hive2://', '').split('/')[0]
-            host = host_port.split(':')[0]
-            port = int(host_port.split(':')[1]) if ':' in host_port else 10000
-        else:
-            host = 'spark-thrift'
-            port = 10000
-            
-        conn = hive.Connection(
-            host=host,
-            port=port,
-            username=os.getenv('JDBC_USERNAME', ''),
-            password=os.getenv('JDBC_PASSWORD', '')
-        )
-        return conn
-    except Exception as e:
-        st.error(f"Erreur de connexion Hive: {e}")
-        return None
+    """Connexion à Hive via Spark Thrift - Temporairement désactivé"""
+    st.warning("Connexion Hive temporairement désactivée")
+    return None
 
 # Sidebar pour la navigation
 st.sidebar.title("Navigation")
@@ -81,14 +61,8 @@ def load_mongo_data():
 
 # Fonction pour charger les données depuis Hive
 def load_hive_data(query):
-    """Charger les données depuis Hive"""
-    conn = get_hive_connection()
-    if conn:
-        try:
-            return pd.read_sql(query, conn)
-        except Exception as e:
-            st.error(f"Erreur de requête Hive: {e}")
-            return pd.DataFrame()
+    """Charger les données depuis Hive - Temporairement désactivé"""
+    st.warning("Fonction Hive temporairement désactivée")
     return pd.DataFrame()
 
 # Page Vue d'ensemble

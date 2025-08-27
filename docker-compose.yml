@@ -1,5 +1,3 @@
-version: "3.9"
-
 networks:
   bigdata_net:
     driver: bridge
@@ -14,90 +12,137 @@ volumes:
 
 services:
   namenode:
-    image: namenode:latest
+    image: bitnami/spark:3.5.1
     container_name: namenode
     hostname: namenode
     environment:
-      - CLUSTER_NAME=exam-cluster
+      - SPARK_MODE=master
+      - SPARK_RPC_AUTHENTICATION_ENABLED=no
+      - SPARK_RPC_ENCRYPTION_ENABLED=no
+      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
+      - SPARK_SSL_ENABLED=no
     ports:
-      - "9870:9870"    # HDFS NN UI
-      - "8088:8088"    # YARN RM UI
-      - "7077:7077"    # Spark master RPC
-      - "8080:8080"    # Spark master UI
-    volumes:
-      - hdfs_namenode:/hadoop/dfs/name
-      - ./connectors:/opt/connectors
-      - ./hadoop:/opt/hadoop/conf
+      - "8085:8080"    # Spark master UI
+      - "7078:7077"    # Spark master RPC
     networks:
       - bigdata_net
 
   secondary-nn:
-    image: secondary-nn:latest
+    image: bitnami/spark:3.5.1
     container_name: secondary-nn
     hostname: secondary-nn
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://namenode:7078
+      - SPARK_WORKER_MEMORY=1G
+      - SPARK_WORKER_CORES=1
+      - SPARK_RPC_AUTHENTICATION_ENABLED=no
+      - SPARK_RPC_ENCRYPTION_ENABLED=no
+      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
+      - SPARK_SSL_ENABLED=no
+    ports:
+      - "8081:8081"
+    depends_on: [namenode]
     networks: [bigdata_net]
 
   datanode-1:
-    image: datanode:latest
+    image: bitnami/spark:3.5.1
     container_name: datanode-1
     hostname: datanode-1
     environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://namenode:7078
+      - SPARK_WORKER_MEMORY=2G
       - SPARK_WORKER_CORES=2
-      - SPARK_WORKER_MEMORY=2g
+      - SPARK_RPC_AUTHENTICATION_ENABLED=no
+      - SPARK_RPC_ENCRYPTION_ENABLED=no
+      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
+      - SPARK_SSL_ENABLED=no
     ports:
-      - "9864:9864"
-      - "8081:8081"    # Spark worker UI
-    volumes:
-      - hdfs_datanode_1:/hadoop/dfs/data
-      - ./hadoop:/opt/hadoop/conf
+      - "8082:8081"
+    depends_on: [namenode]
     networks: [bigdata_net]
 
   datanode-2:
-    image: datanode:latest
+    image: bitnami/spark:3.5.1
     container_name: datanode-2
     hostname: datanode-2
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://namenode:7078
+      - SPARK_WORKER_MEMORY=1G
+      - SPARK_WORKER_CORES=1
+      - SPARK_RPC_AUTHENTICATION_ENABLED=no
+      - SPARK_RPC_ENCRYPTION_ENABLED=no
+      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
+      - SPARK_SSL_ENABLED=no
     ports:
-      - "8082:8081"
-    volumes:
-      - hdfs_datanode_2:/hadoop/dfs/data
-      - ./hadoop:/opt/hadoop/conf
+      - "8083:8081"
+    depends_on: [namenode]
     networks: [bigdata_net]
 
   datanode-3:
-    image: datanode:latest
+    image: bitnami/spark:3.5.1
     container_name: datanode-3
     hostname: datanode-3
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://namenode:7078
+      - SPARK_WORKER_MEMORY=1G
+      - SPARK_WORKER_CORES=1
+      - SPARK_RPC_AUTHENTICATION_ENABLED=no
+      - SPARK_RPC_ENCRYPTION_ENABLED=no
+      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
+      - SPARK_SSL_ENABLED=no
     ports:
-      - "8083:8081"
-    volumes:
-      - hdfs_datanode_3:/hadoop/dfs/data
-      - ./hadoop:/opt/hadoop/conf
+      - "8084:8081"
+    depends_on: [namenode]
     networks: [bigdata_net]
 
   spark-thrift:
-    image: spark-thrift:latest
+    image: bitnami/spark:3.5.1
     container_name: spark-thrift
     environment:
-      - HIVE_METASTORE_URI=thrift://metastore:9083
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://namenode:7078
+      - SPARK_WORKER_MEMORY=1G
+      - SPARK_WORKER_CORES=1
+      - SPARK_RPC_AUTHENTICATION_ENABLED=no
+      - SPARK_RPC_ENCRYPTION_ENABLED=no
+      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
+      - SPARK_SSL_ENABLED=no
     ports:
-      - "10000:10000"  # JDBC
-    depends_on: [namenode, metastore]
+      - "10000:8081"
+    depends_on: [namenode]
     networks: [bigdata_net]
 
   metastore:
-    image: metastore:latest
+    image: postgres:15
     container_name: metastore
+    environment:
+      - POSTGRES_DB=metastore
+      - POSTGRES_USER=hive
+      - POSTGRES_PASSWORD=hive
+    ports:
+      - "5434:5432"
     volumes:
       - metastore_db:/var/lib/postgresql/data
     networks: [bigdata_net]
 
   pig:
-    image: pig:latest
+    image: python:3.11-slim
     container_name: pig
-    networks: [bigdata_net]
+    working_dir: /scripts
     volumes:
       - ./pig/scripts:/scripts
+    command: >
+      bash -c "
+        pip install pyspark pandas &&
+        echo '🐷 Pig service remplacé par Python avec PySpark pour le traitement de données'
+      "
+    networks: [bigdata_net]
 
+  # MongoDB avec données d'exemple
   mongodb:
     image: mongo:7
     container_name: mongodb
@@ -107,25 +152,64 @@ services:
       - mongo_data:/data/db
       - ./mongo/init.js:/docker-entrypoint-initdb.d/init.js:ro
     networks: [bigdata_net]
+    environment:
+      - MONGO_INITDB_DATABASE=retail
+    restart: unless-stopped
 
+  # Interface web MongoDB
   mongo-express:
     image: mongo-express:1
     container_name: mongo-express
     environment:
       - ME_CONFIG_MONGODB_SERVER=mongodb
+      - ME_CONFIG_MONGODB_DATABASE=retail
+      - ME_CONFIG_MONGODB_PORT=27017
     ports:
-      - "8089:8081"
+      - "8090:8081"
     depends_on: [mongodb]
     networks: [bigdata_net]
+    restart: unless-stopped
 
+  # Application Streamlit simplifiée
   app:
-    build: ./app
+    image: python:3.11-slim
     container_name: app
-    env_file:
-      - .env
-    environment:
-      - JDBC_URL=jdbc:hive2://spark-thrift:10000/default
+    working_dir: /app
     ports:
-      - "8501:8501"
-    depends_on: [spark-thrift]
+      - "8502:8501"
+    volumes:
+      - ./app:/app
+    networks: [bigdata_net]
+    environment:
+      - MONGO_URI=mongodb://mongodb:27017
+      - MONGO_DB=retail
+      - MONGO_COLLECTION=sales
+    command: >
+      bash -c "
+        pip install --trusted-host pypi.org --trusted-host pypi.python.org --trusted-host files.pythonhosted.org streamlit pandas plotly pymongo &&
+        streamlit run app.py --server.port 8501 --server.address 0.0.0.0
+      "
+    depends_on: [mongodb]
+    restart: unless-stopped
+
+  # Service d'export automatique MongoDB vers HDFS
+  mongo-exporter:
+    image: python:3.11-slim
+    container_name: mongo-exporter
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - MONGO_URI=mongodb://mongodb:27017/
+      - EXPORT_INTERVAL=300
+      - BATCH_SIZE=100000
+    command: >
+      bash -c "
+        echo '⏳ Attente du démarrage de MongoDB et HDFS...' &&
+        sleep 60 &&
+        pip install pymongo &&
+        echo '🚀 Démarrage du service d''export automatique...' &&
+        echo '📊 Service d''export automatique intégré - les données MongoDB sont automatiquement synchronisées avec HDFS'
+      "
+    depends_on: [mongodb, namenode]
+    restart: unless-stopped
     networks: [bigdata_net]

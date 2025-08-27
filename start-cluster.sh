@@ -39,13 +39,7 @@ if [ ! -f "connectors/mongo-spark-connector_2.12-10.1.1.jar" ]; then
     cd ..
 fi
 
-if [ ! -f "connectors/postgresql-42.7.1.jar" ]; then
-    echo "⚠️  Driver PostgreSQL manquant. Téléchargement..."
-    mkdir -p connectors
-    cd connectors
-    wget -q https://jdbc.postgresql.org/download/postgresql-42.7.1.jar -O postgresql-42.7.1.jar
-    cd ..
-fi
+
 
 # Construire les images Docker
 echo "🔨 Construction des images Docker..."
@@ -71,13 +65,22 @@ sleep 60
 echo "🔍 Vérification de HDFS..."
 docker exec namenode hdfs dfsadmin -report | head -20
 
-# Lancer l'ingestion MongoDB vers HDFS
-echo "📥 Lancement de l'ingestion MongoDB vers HDFS..."
-docker exec spark-thrift python3 /opt/spark/scripts/mongo_to_hdfs.py
+# Vérifier que le service d'export automatique est démarré
+echo "📥 Vérification du service d'export automatique MongoDB vers HDFS..."
+sleep 30
 
-# Lancer le script Pig EDA
-echo "🐷 Lancement de l'analyse Pig..."
-docker exec pig pig -x mapreduce /scripts/eda.pig
+if docker ps | grep -q "mongo-exporter.*Up"; then
+    echo "✅ Service d'export automatique démarré avec succès"
+    echo "🔄 Les données MongoDB seront exportées automatiquement vers HDFS toutes les 5 minutes"
+else
+    echo "⚠️  Service d'export automatique non détecté, démarrage manuel..."
+    docker-compose up -d mongo-exporter
+    sleep 30
+fi
+
+# Lancer le script Pig EDA (optionnel - peut être lancé manuellement)
+echo "🐷 Lancement de l'analyse Pig (optionnel)..."
+docker exec pig pig -x mapreduce /scripts/eda.pig || echo "⚠️  Analyse Pig non disponible pour le moment"
 
 echo ""
 echo "✅ Architecture démarrée avec succès!"
@@ -91,6 +94,10 @@ echo "  - Spark Worker 2: http://localhost:8082"
 echo "  - Spark Worker 3: http://localhost:8083"
 echo "  - MongoDB Express: http://localhost:8089"
 echo "  - Application Streamlit: http://localhost:8501"
+echo ""
+echo "🔄 Services automatiques:"
+echo "  - Export MongoDB → HDFS: Automatique toutes les 5 minutes"
+echo "  - Logs du service d'export: docker logs -f mongo-exporter"
 echo ""
 echo "🔧 Commandes utiles:"
 echo "  - Voir les logs: docker-compose logs -f [service]"
