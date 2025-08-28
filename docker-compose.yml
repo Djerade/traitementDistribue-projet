@@ -51,7 +51,7 @@ services:
     hostname: datanode-1
     environment:
       - SPARK_MODE=worker
-      - SPARK_MASTER_URL=spark://namenode:7078
+      - SPARK_MASTER_URL=spark://namenode:7077
       - SPARK_WORKER_MEMORY=2G
       - SPARK_WORKER_CORES=2
       - SPARK_RPC_AUTHENTICATION_ENABLED=no
@@ -69,7 +69,7 @@ services:
     hostname: datanode-2
     environment:
       - SPARK_MODE=worker
-      - SPARK_MASTER_URL=spark://namenode:7078
+      - SPARK_MASTER_URL=spark://namenode:7077
       - SPARK_WORKER_MEMORY=1G
       - SPARK_WORKER_CORES=1
       - SPARK_RPC_AUTHENTICATION_ENABLED=no
@@ -87,7 +87,7 @@ services:
     hostname: datanode-3
     environment:
       - SPARK_MODE=worker
-      - SPARK_MASTER_URL=spark://namenode:7078
+      - SPARK_MASTER_URL=spark://namenode:7077
       - SPARK_WORKER_MEMORY=1G
       - SPARK_WORKER_CORES=1
       - SPARK_RPC_AUTHENTICATION_ENABLED=no
@@ -104,7 +104,7 @@ services:
     container_name: spark-thrift
     environment:
       - SPARK_MODE=worker
-      - SPARK_MASTER_URL=spark://namenode:7078
+      - SPARK_MASTER_URL=spark://namenode:7077
       - SPARK_WORKER_MEMORY=1G
       - SPARK_WORKER_CORES=1
       - SPARK_RPC_AUTHENTICATION_ENABLED=no
@@ -186,7 +186,8 @@ services:
       - MONGO_COLLECTION=sales
     command: >
       bash -c "
-        pip install --trusted-host pypi.org --trusted-host pypi.python.org --trusted-host files.pythonhosted.org streamlit pandas plotly pymongo &&
+        pip install --trusted-host pypi.org --trusted-host pypi.python.org --trusted-host files.pythonhosted.org -r requirements.txt &&
+        pip install --trusted-host pypi.org --trusted-host pypi.python.org --trusted-host files.pythonhosted.org pyspark==3.5.1 &&
         streamlit run app.py --server.port 8501 --server.address 0.0.0.0
       "
     depends_on: [mongodb]
@@ -211,5 +212,26 @@ services:
         echo '📊 Service d''export automatique intégré - les données MongoDB sont automatiquement synchronisées avec HDFS'
       "
     depends_on: [mongodb, namenode]
+    restart: unless-stopped
+    networks: [bigdata_net]
+
+  # Service Spark pour le traitement distribué
+  spark-processor:
+    image: python:3.11-slim
+    container_name: spark-processor
+    working_dir: /app
+    volumes:
+      - ./spark:/app
+    environment:
+      - SPARK_MASTER=spark://namenode:7077
+      - MONGO_URI=mongodb://mongodb:27017
+    command: >
+      bash -c "
+        echo '🚀 Installation des dépendances Spark...' &&
+        pip install --trusted-host pypi.org --trusted-host pypi.python.org --trusted-host files.pythonhosted.org pyspark pymongo pandas &&
+        echo '⚡ Démarrage du processeur Spark...' &&
+        python spark-processor.py
+      "
+    depends_on: [namenode, mongodb]
     restart: unless-stopped
     networks: [bigdata_net]
