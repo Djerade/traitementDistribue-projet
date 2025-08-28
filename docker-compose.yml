@@ -235,3 +235,55 @@ services:
     depends_on: [namenode, mongodb]
     restart: unless-stopped
     networks: [bigdata_net]
+
+  # Workers Spark dédiés - Chaque worker dans son propre conteneur
+  spark-worker-1:
+    image: bitnami/spark:3.5.1
+    container_name: spark-worker-1
+    hostname: spark-worker-1
+    environment:
+      - SPARK_MASTER_URL=spark://namenode:7077
+      - SPARK_WORKER_MEMORY=2G
+      - SPARK_WORKER_CORES=2
+    volumes:
+      - ./spark/worker1.sh:/worker1.sh
+    ports:
+      - "8091:8081"
+    depends_on: [namenode]
+    restart: unless-stopped
+    command: ["/worker1.sh"]
+    networks: [bigdata_net]
+
+  spark-worker-2:
+    image: bitnami/spark:3.5.1
+    container_name: spark-worker-2
+    hostname: spark-worker-2
+    environment:
+      - SPARK_MASTER_URL=spark://namenode:7077
+      - SPARK_WORKER_MEMORY=1G
+      - SPARK_WORKER_CORES=1
+    volumes:
+      - ./spark/worker2.sh:/worker2.sh
+    ports:
+      - "8092:8081"
+    depends_on: [namenode]
+    restart: unless-stopped
+    command: ["/worker2.sh"]
+    networks: [bigdata_net]
+
+  spark-worker-3:
+    image: bitnami/spark:3.5.1
+    container_name: spark-worker-3
+    hostname: spark-worker-3
+    environment:
+      - SPARK_MASTER_URL=spark://namenode:7077
+      - SPARK_WORKER_MEMORY=1G
+      - SPARK_WORKER_CORES=1
+    volumes:
+      - ./spark/worker3.sh:/worker3.sh
+    ports:
+      - "8093:8081"
+    depends_on: [namenode]
+    restart: unless-stopped
+    command: ["/worker3.sh"]
+    networks: [bigdata_net]

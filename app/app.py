@@ -9,7 +9,13 @@ import os
 from datetime import datetime, timedelta
 
 # Imports Spark (optionnels - seulement si PySpark est disponible)
-SPARK_AVAILABLE = False  # Désactivé temporairement pour éviter les erreurs
+try:
+    from pyspark.sql import SparkSession
+    from pyspark.sql.functions import *
+    SPARK_AVAILABLE = True
+except ImportError:
+    SPARK_AVAILABLE = False
+    st.warning("⚠️ PySpark n'est pas installé. Certaines fonctionnalités Spark seront désactivées.")
 
 # Configuration de la page
 st.set_page_config(
@@ -92,16 +98,12 @@ def run_spark_analysis(analysis_type="category", limit=10000):
         return None
         
     try:
-        # Créer une session Spark
+        # Créer une session Spark en mode local
         spark = SparkSession.builder \
             .appName("StreamlitSparkAnalysis") \
-            .config("spark.master", "spark://namenode:7077") \
+            .config("spark.master", "local[*]") \
             .config("spark.driver.memory", "1g") \
-            .config("spark.executor.memory", "2g") \
-            .config("spark.executor.cores", "2") \
             .config("spark.sql.adaptive.enabled", "true") \
-            .config("spark.hadoop.fs.defaultFS", "hdfs://namenode:9000") \
-            .enableHiveSupport() \
             .getOrCreate()
         
         # Charger les données MongoDB

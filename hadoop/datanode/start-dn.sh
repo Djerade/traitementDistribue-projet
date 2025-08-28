@@ -20,7 +20,7 @@ su -c "yarn nodemanager" hadoop &
 
 # Démarrer le Spark Worker
 echo "Starting Spark Worker..."
-su -c "spark-class org.apache.spark.deploy.worker.Worker --webui-port 8081 spark://namenode:7077" spark &
+su -c "spark-class org.apache.spark.deploy.worker.Worker --webui-port 8081 --host $(hostname) spark://namenode:7077" spark &
 
 # Garder le conteneur en vie
 tail -f /dev/null

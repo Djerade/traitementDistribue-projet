@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  # Worker Spark Simple
+  spark-worker-simple:
+    image: bitnami/spark:3.5.1
+    container_name: spark-worker-simple
+    hostname: spark-worker-simple
+    environment:
+      - SPARK_MASTER_URL=spark://namenode:7077
+      - SPARK_WORKER_MEMORY=1G
+      - SPARK_WORKER_CORES=1
+    volumes:
+      - ./spark/simple-worker.sh:/simple-worker.sh
+    ports:
+      - "8089:8081"
+    depends_on: [namenode]
+    restart: unless-stopped
+    command: ["/simple-worker.sh"]
+    networks: [bigdata_net]
+
+networks:
+  bigdata_net:
+    external: true
